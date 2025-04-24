@@ -13,7 +13,7 @@ import java.util.concurrent.*;
 public class Main {
 
   public static void main(String[] args) throws Exception {
-    String fileName = System.getProperty("user.home") + "/PassTimeServerOptions.yaml";
+    /*String fileName = System.getProperty("user.home") + "/PassTimeServerOptions.yaml";
     Options opts = Tools.createOptionsFromYaml(fileName);
     String host = opts.getHost();
     int port = opts.getPort();
@@ -60,7 +60,14 @@ public class Main {
     }
     s.stopServer();
     System.out.println("\n=== Server log ===");
-    System.out.println(s.getServerLog());
+    System.out.println(s.getServerLog());*/
+
+    Server s = new Server("localhost", 8080);
+    s.startServer();
+    System.out.println("stopping");
+    Thread.sleep(2000);
+    s.stopServer();
+    System.out.println("stopped?");
   }
 
 }
