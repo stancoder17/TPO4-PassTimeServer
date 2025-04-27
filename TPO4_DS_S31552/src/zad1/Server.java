@@ -10,12 +10,14 @@ package zad1;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
 
 public class Server implements Runnable {
@@ -25,6 +27,7 @@ public class Server implements Runnable {
     private Selector selector;
     private final Log log = new Log(this);
     private volatile boolean isRunning = false;
+    private final Map<SocketChannel, String> clientLogins = new HashMap<>();
 
     public Server(String host, int port) {
         this.host = host;
@@ -103,9 +106,68 @@ public class Server implements Runnable {
         }
     }
 
-    private void serviceRequest(SocketChannel sc) {
-        if (!sc.isOpen()) return;
+    private void serviceRequest(SocketChannel sc) throws IOException {
+        if (!sc.isOpen() || sc.socket().isClosed()) return;
 
-        ByteBuffer bbuf = ByteBuffer.allocate(1024);
+        String request = BufferOperations.readMessage(sc);
+
+        // If client not logged in
+        synchronized (clientLogins) {
+            if (!clientLogins.containsKey(sc)) {
+                if (isValidLogin(request)) {
+                    clientLogins.put(sc, request.split(" ")[1]); // login Adam -> put(sc, "Adam")
+                    writeResponse(sc, "logged in");
+                } else {
+                    writeResponse(sc, "incorrect login, connect again");
+                    sc.close();
+                    sc.socket().close();
+                }
+                return;
+            }
+        }
+
+        String[] tokens = request.split(" ");
+
+        String command = tokens[0];
+        if (command.equals("bye")) {
+            writeResponse(sc, "logged out");
+            clientLogins.remove(sc);
+            sc.close();
+            sc.socket().close();
+        }
+        else if (command.equals("bye and log transfer")) { // TO BE IMPLEMENTED
+            writeResponse(sc, "client's log...");
+            sc.close();
+            sc.socket().close();
+        }
+        else {
+            if (tokens.length != 2) {
+                writeResponse(sc, "incorrect date command");
+                return;
+            }
+            String dateFrom = tokens[0];
+            String dateTo = tokens[1];
+
+            String dateMsg = Time.passed(dateFrom, dateTo);
+            writeResponse(sc, dateMsg);
+        }
+
+    }
+
+    private void writeResponse(SocketChannel sc, String message) throws IOException {
+        message += "\n";
+
+        ByteBuffer buf = ByteBuffer.wrap(message.getBytes(StandardCharsets.UTF_8));
+
+        while (buf.hasRemaining())
+            sc.write(buf);
+    }
+
+    private boolean isValidLogin(String msg) {
+        if (msg != null) {
+            String[] tokens = msg.split(" ");
+            return tokens.length == 2 && tokens[0].equals("login");
+        }
+        return false; // else
     }
 }
