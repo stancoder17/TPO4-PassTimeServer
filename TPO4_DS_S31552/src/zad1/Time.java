@@ -20,9 +20,7 @@ public class Time {
 
             dateFormat = classify(from);
         } catch (Exception e) {
-            System.out.print("*** ");
-            System.out.print(e);
-            return "";
+            return "*** " + e;
         }
 
         // Get dates
