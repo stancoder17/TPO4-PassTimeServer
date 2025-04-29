@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Server implements Runnable {
     private final String host;
@@ -23,7 +24,7 @@ public class Server implements Runnable {
     private ServerSocketChannel ssc;
     private Selector selector;
     private final Log log = new Log();
-    private volatile boolean isRunning = false;
+    private final AtomicBoolean isRunning = new AtomicBoolean(false);
     private final Map<SocketChannel, String> clientLogins = new HashMap<>();
 
     public Server(String host, int port) {
@@ -40,7 +41,7 @@ public class Server implements Runnable {
             selector = Selector.open();
             ssc.register(selector, SelectionKey.OP_ACCEPT);
 
-            isRunning = true;
+            isRunning.set(true);
         } catch (IOException e) {
             throw new RuntimeException("An error occurred while starting the server", e);
         }
@@ -54,7 +55,7 @@ public class Server implements Runnable {
 
     public void stopServer() {
         try {
-            isRunning = false;
+            isRunning.set(false);
             selector.wakeup();
             ssc.close();
             selector.close();
@@ -75,7 +76,7 @@ public class Server implements Runnable {
                     break;
                 }
 
-                if (!isRunning) break;
+                if (!isRunning.get()) break;
 
                 // An operation occured
                 Set<SelectionKey> keys = selector.selectedKeys();
