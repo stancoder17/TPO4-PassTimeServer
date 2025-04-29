@@ -64,6 +64,10 @@ public class Time {
         return getTimeText(fromDate, toDate, days, weeks, years, months, daysCalendar);
     }
 
+    public static String currentTime() {
+        return LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss.SSS"));
+    }
+
     public static String getTimeText(LocalDate fromDate, LocalDate toDate, long days, double weeks, int years, int months, int daysCalendar) {
         boolean hasCalendarPart = years != -1 && months != -1 && daysCalendar != -1;
 
