@@ -3,6 +3,7 @@ package zad1;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
 
 public class BufferOperations {
     public static String readMessage(SocketChannel sc) throws IOException {
@@ -11,9 +12,7 @@ public class BufferOperations {
 
         while (sc.read(buf) > 0) {
             buf.flip();
-            while (buf.hasRemaining()) {
-                sb.append((char) buf.get());
-            }
+            sb.append(StandardCharsets.UTF_8.decode(buf));
             buf.clear();
         }
 
