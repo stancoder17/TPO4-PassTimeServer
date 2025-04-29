@@ -10,10 +10,7 @@ package zad1;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
+import java.nio.channels.*;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -25,7 +22,7 @@ public class Server implements Runnable {
     private final int port;
     private ServerSocketChannel ssc;
     private Selector selector;
-    private final Log log = new Log(this);
+    private final Log log = new Log();
     private volatile boolean isRunning = false;
     private final Map<SocketChannel, String> clientLogins = new HashMap<>();
 
@@ -35,8 +32,6 @@ public class Server implements Runnable {
     }
 
     public void run() {
-        System.out.println("Starting server: " + host + ":" + port);
-
         try {
             ssc = ServerSocketChannel.open();
             ssc.configureBlocking(false);
@@ -45,7 +40,6 @@ public class Server implements Runnable {
             selector = Selector.open();
             ssc.register(selector, SelectionKey.OP_ACCEPT);
 
-            System.out.println("Server started: " + host + ":" + port);
             isRunning = true;
         } catch (IOException e) {
             throw new RuntimeException("An error occurred while starting the server", e);
@@ -60,23 +54,28 @@ public class Server implements Runnable {
 
     public void stopServer() {
         try {
-            System.out.println("Stopping server: " + host + ":" + port);
             isRunning = false;
-
+            selector.wakeup();
             ssc.close();
             selector.close();
 
-            System.out.println("Server stopped: " + host + ":" + port);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
+    // The breaking point for the while loop has been set in "if (!isRunning) break" line - it fixed the ClosedSelectorException problem
     private void serviceConnections() {
-        while (isRunning) {
+        while (true) {
             try {
                 // Wait for incoming operations
-                selector.select();
+                try {
+                    selector.select();
+                } catch (ClosedSelectorException e) { // The selector has been closed
+                    break;
+                }
+
+                if (!isRunning) break;
 
                 // An operation occured
                 Set<SelectionKey> keys = selector.selectedKeys();
@@ -110,12 +109,17 @@ public class Server implements Runnable {
         if (!sc.isOpen() || sc.socket().isClosed()) return;
 
         String request = BufferOperations.readMessage(sc);
+        String clientId = clientLogins.get(sc);
 
         // If client not logged in
         synchronized (clientLogins) {
             if (!clientLogins.containsKey(sc)) {
                 if (isValidLogin(request)) {
-                    clientLogins.put(sc, request.split(" ")[1]); // login Adam -> put(sc, "Adam")
+                    clientId = request.split(" ")[1];
+                    clientLogins.put(sc, clientId); // login Adam -> put(sc, "Adam")
+
+                    log.add(clientId + " logged in at " + Time.currentTime());
+
                     writeResponse(sc, "logged in");
                 } else {
                     writeResponse(sc, "incorrect login, connect again");
@@ -130,13 +134,14 @@ public class Server implements Runnable {
 
         String command = tokens[0];
         if (command.equals("bye")) {
-            writeResponse(sc, "logged out");
             clientLogins.remove(sc);
+            writeResponse(sc, "logged out");
+            log.add(clientId + " logged out at " + Time.currentTime());
             sc.close();
             sc.socket().close();
         }
-        else if (command.equals("bye and log transfer")) { // TO BE IMPLEMENTED
-            writeResponse(sc, "client's log...");
+        else if (command.equals("bye and log transfer")) {
+            log.add(clientId + " logged out at " + Time.currentTime());
             sc.close();
             sc.socket().close();
         }
@@ -145,11 +150,13 @@ public class Server implements Runnable {
                 writeResponse(sc, "incorrect date command");
                 return;
             }
+
             String dateFrom = tokens[0];
             String dateTo = tokens[1];
 
             String dateMsg = Time.passed(dateFrom, dateTo);
             writeResponse(sc, dateMsg);
+            log.add(clientId + " request at " + Time.currentTime() + ": \"" + request + "\"");
         }
 
     }
@@ -169,5 +176,9 @@ public class Server implements Runnable {
             return tokens.length == 2 && tokens[0].equals("login");
         }
         return false; // else
+    }
+
+    public String getServerLog() {
+        return log.getLog();
     }
 }
