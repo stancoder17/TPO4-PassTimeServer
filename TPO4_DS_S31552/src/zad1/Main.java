@@ -6,16 +6,13 @@
 
 package zad1;
 
-
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.Socket;
+import java.util.*;
+import java.util.concurrent.*;
 
 public class Main {
 
   public static void main(String[] args) throws Exception {
-    /*String fileName = System.getProperty("user.home") + "/PassTimeServerOptions.yaml";
+    String fileName = System.getProperty("user.home") + "/PassTimeServerOptions.yaml";
     Options opts = Tools.createOptionsFromYaml(fileName);
     String host = opts.getHost();
     int port = opts.getPort();
@@ -24,7 +21,7 @@ public class Main {
     Map<String, List<String>> clRequests = opts.getClientsMap();
     ExecutorService es = Executors.newCachedThreadPool();
     List<ClientTask> ctasks = new ArrayList<>();
-    List<String> clogs = new ArrayList<>(); 
+    List<String> clogs = new ArrayList<>();
 
     Server s = new Server(host, port);
     s.startServer();
@@ -62,20 +59,7 @@ public class Main {
     }
     s.stopServer();
     System.out.println("\n=== Server log ===");
-    System.out.println(s.getServerLog());*/
-
-    Server s = new Server("localhost", 8080);
-    s.startServer();
-    System.out.println("stopping");
-    Thread.sleep(500);
-
-    Socket socket = new Socket("localhost", 8080);
-    PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-    BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-
-    Client client = new Client("localhost", 8080, "Adam");
-    client.connect();
-    System.out.println(client.send("login Adam"));
+    System.out.println(s.getServerLog());
   }
 
 }
